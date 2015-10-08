@@ -73,7 +73,16 @@ class Etcd:
             raise helpers.errors.CurrentLeaderError("Etcd is not responding properly")
 
     def touch_member(self, member, connection_string):
-        self.put_client_path("/members/%s" % member, {"value": connection_string, "ttl": self.ttl})
+        tries = 0
+        while (tries < 3):
+            try:
+                self.put_client_path("/members/%s" % member, {"value": connection_string, "ttl": self.ttl})
+                break
+            except urllib2.HTTPError as e:
+                if e.code == 500:
+                    tries += 1
+                    time.sleep(1)
+                    continue
 
     def take_leader(self, value):
         return self.put_client_path("/leader", {"value": value, "ttl": self.ttl}) == None
